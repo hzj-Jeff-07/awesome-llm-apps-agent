@@ -81,7 +81,28 @@ curl -X POST "http://127.0.0.1:8000/finance-brief/trigger" \
 export FINBRIEF_WATCHLIST="apple,nvidia,berkshire"
 ```
 
-## 方式三：定时投递
+## 方式三：GitHub Actions 定时运行（零服务器，推荐起步用）
+
+仓库自带 [`.github/workflows/finance-brief.yml`](../../.github/workflows/finance-brief.yml)，每个工作日北京时间 20:30（美东盘前）自动运行一次：抓取 EDGAR → 渲染简报 → 投递。管线只用 Python 标准库，CI 中无需安装依赖。
+
+启用步骤：
+
+1. 在你 fork 的仓库页面进入 **Actions** 标签，点击启用 workflows（fork 默认关闭定时任务）。
+2. 在 **Settings → Secrets and variables → Actions** 配置：
+   - Secret `FINBRIEF_WEBHOOK_URL`（推荐，接企业微信/飞书/Telegram 转发服务）**或**一组 Gmail 凭据（`FINBRIEF_EMAIL_TO/FROM`、`FINBRIEF_GMAIL_CLIENT_ID/CLIENT_SECRET/REFRESH_TOKEN`）。
+   - Secret `FINBRIEF_EDGAR_UA`：形如 `"YourProject your_email@example.com"`（不设则回退为仓库地址标识）。
+   - 可选 Variable：`FINBRIEF_WATCHLIST`、`FINBRIEF_TOP_N`、`FINBRIEF_DELIVERY`。
+3. 手动触发一次验证：Actions → FinanceScout Daily Brief → **Run workflow**（可勾选 dry run 只渲染不投递）。
+
+即使不配置任何投递，简报正文也会打印在运行日志里，公众号文章 markdown 会显示在 job summary 中。注意：GitHub 会在仓库 60 天无活动后自动暂停定时 workflow，收到提醒邮件后点一下 re-enable 即可。
+
+本地/服务器上等价的单次运行命令（配 cron 使用）：
+
+```bash
+python3 run_daily.py
+```
+
+## 方式四：定时投递（自建服务）
 
 投递是显式开启的：请求体包含 `"dry_run": false` 且配置了投递方式才会真正发送。
 

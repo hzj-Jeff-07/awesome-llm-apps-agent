@@ -1,0 +1,49 @@
+name: FinanceScout Daily Brief
+
+on:
+  schedule:
+    # 12:30 UTC = 北京时间 20:30，美东盘前，工作日运行
+    - cron: "30 12 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (render only, skip delivery)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  brief:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: always_on_agents/always_on_finance_briefing_agent
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # The scheduled pipeline only uses the Python standard library,
+      # so no pip install is needed here.
+      - name: Run daily brief
+        env:
+          FINBRIEF_LIVE_EDGAR: "true"
+          FINBRIEF_DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
+          FINBRIEF_EDGAR_UA: ${{ secrets.FINBRIEF_EDGAR_UA || format('FinanceScout (github.com/{0})', github.repository) }}
+          FINBRIEF_TOP_N: ${{ vars.FINBRIEF_TOP_N }}
+          FINBRIEF_WATCHLIST: ${{ vars.FINBRIEF_WATCHLIST }}
+          FINBRIEF_DELIVERY: ${{ vars.FINBRIEF_DELIVERY }}
+          FINBRIEF_WEBHOOK_URL: ${{ secrets.FINBRIEF_WEBHOOK_URL }}
+          FINBRIEF_WEBHOOK_TOKEN: ${{ secrets.FINBRIEF_WEBHOOK_TOKEN }}
+          FINBRIEF_EMAIL_TO: ${{ secrets.FINBRIEF_EMAIL_TO }}
+          FINBRIEF_EMAIL_FROM: ${{ secrets.FINBRIEF_EMAIL_FROM }}
+          FINBRIEF_GMAIL_CLIENT_ID: ${{ secrets.FINBRIEF_GMAIL_CLIENT_ID }}
+          FINBRIEF_GMAIL_CLIENT_SECRET: ${{ secrets.FINBRIEF_GMAIL_CLIENT_SECRET }}
+          FINBRIEF_GMAIL_REFRESH_TOKEN: ${{ secrets.FINBRIEF_GMAIL_REFRESH_TOKEN }}
+        run: python run_daily.py
